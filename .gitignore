@@ -1,4 +1,5 @@
-# Secrets — NEVER commit config.json (contains the API key).
+# Secrets — NEVER commit these (they hold your API key).
+.env
 config.json
 
 # Runtime logs
@@ -12,3 +13,6 @@ __pycache__/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Vercel
+.vercel/

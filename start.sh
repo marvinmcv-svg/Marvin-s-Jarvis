@@ -9,6 +9,14 @@ cd "$(dirname "$0")"
 
 PORT=4700
 
+# Auto-load .env into the environment (if it exists). kg_core.py also loads
+# .env at import, so this is belt-and-suspenders — either path works.
+if [ -f .env ]; then
+  set -a
+  . ./.env
+  set +a
+fi
+
 # Kill anything already on the port.
 if command -v lsof >/dev/null 2>&1; then
   OLD=$(lsof -ti :$PORT 2>/dev/null || true)

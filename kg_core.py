@@ -29,6 +29,46 @@ PROVIDER_DEFAULTS = {
     "gemini":    "https://generativelanguage.googleapis.com/v1beta/models",
 }
 
+
+# --------------------------------------------------------------------------
+# .env loader (stdlib only). Loads .env at import so the key works locally
+# from a single gitignored file. Vercel injects env vars directly (no .env
+# needed there), but this keeps both paths identical.
+# --------------------------------------------------------------------------
+ENV_PATH = os.path.join(BASE, ".env")
+
+
+def _load_dotenv():
+    """Populate os.environ from a .env file (KEY=value lines). Stdlib only.
+
+    Does NOT overwrite vars already in the environment (real env wins, which
+    is what Vercel needs). Skips blank/comment lines. Strips optional quotes.
+    """
+    if not os.path.isfile(ENV_PATH):
+        return
+    try:
+        with open(ENV_PATH, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                key = key.strip()
+                val = val.strip()
+                # Strip surrounding quotes if present.
+                if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):
+                    val = val[1:-1]
+                if key and key not in os.environ:
+                    os.environ[key] = val
+    except Exception:
+        pass  # Never let a malformed .env break the app.
+
+
+_load_dotenv()
+
+
 # Reuse build.py's scanner so server-side note ids match viewer/graph-data.js.
 sys.path.insert(0, BASE)
 import build as build_mod  # noqa: E402
