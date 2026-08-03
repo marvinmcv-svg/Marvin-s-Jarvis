@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Knowledge Galaxy</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #e7ecff;
+    -webkit-font-smoothing: antialiased;
+  }
+  #graph { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  /* cinematic vignette */
+  .vignette {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(0,0,0,0.6) 100%);
+  }
+
+  .overlay { position: fixed; z-index: 10; }
+
+  /* Title */
+  #title { top: 18px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; }
+  #title h1 {
+    margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.2em;
+    text-transform: uppercase; color: #fff;
+    text-shadow: 0 0 18px rgba(120,160,255,0.55);
+  }
+  #title p { margin: 4px 0 0; font-size: 11px; letter-spacing: 0.14em; color: #8aa0d8; text-transform: uppercase; }
+
+  /* Legend */
+  #legend {
+    top: 18px; left: 18px;
+    background: rgba(10,14,28,0.55);
+    border: 1px solid rgba(120,150,255,0.18);
+    border-radius: 12px; padding: 12px 14px; min-width: 150px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+  #legend .legend-title { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #8aa0d8; margin-bottom: 8px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 3px 0; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+  .legend-count { margin-left: auto; color: #6f82b8; font-size: 11px; }
+
+  /* Controls */
+  #controls { top: 18px; right: 18px; display: flex; gap: 8px; align-items: center; }
+  #search {
+    width: 220px; max-width: 42vw;
+    background: rgba(10,14,28,0.55);
+    border: 1px solid rgba(120,150,255,0.18);
+    border-radius: 10px; padding: 9px 12px;
+    color: #e7ecff; font-size: 13px; outline: none;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  #search::placeholder { color: #6f82b8; }
+  #search:focus { border-color: rgba(150,180,255,0.5); box-shadow: 0 0 0 3px rgba(120,150,255,0.12); }
+  .btn {
+    background: rgba(10,14,28,0.55);
+    border: 1px solid rgba(120,150,255,0.18);
+    border-radius: 10px; padding: 9px 12px;
+    color: #cdd9ff; font-size: 12.5px; cursor: pointer;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .btn:hover { background: rgba(28,36,66,0.7); border-color: rgba(150,180,255,0.4); }
+  .btn:active { transform: translateY(1px); }
+
+  /* Hint */
+  #hint { bottom: 96px; left: 18px; font-size: 11.5px; color: #7e90c4; letter-spacing: 0.04em; pointer-events: none; transition: opacity .3s; }
+  #hint b { color: #c2cdf2; font-weight: 600; }
+
+  /* Node hover tooltip */
+  .node-tip {
+    background: rgba(10,14,28,0.88);
+    border: 1px solid rgba(150,180,255,0.3);
+    border-radius: 8px; padding: 6px 10px;
+    font-size: 12.5px; color: #eaf0ff;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.6);
+    display: flex; align-items: center; gap: 7px;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .node-tip .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .node-tip small { color: #8aa0d8; margin-left: 6px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* Side panel */
+  #panel {
+    top: 64px; right: 18px; bottom: 18px;
+    width: 380px; max-width: 86vw;
+    background: rgba(10,14,28,0.72);
+    border: 1px solid rgba(120,150,255,0.22);
+    border-radius: 16px; padding: 22px 22px 18px;
+    overflow-y: auto;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 14px 50px rgba(0,0,0,0.6), inset 0 0 30px rgba(60,80,160,0.06);
+    transform: translateX(420px); opacity: 0;
+    transition: transform .35s cubic-bezier(.2,.7,.2,1), opacity .35s;
+    z-index: 12;
+  }
+  #panel.open { transform: translateX(0); opacity: 1; }
+  #panel-close {
+    position: absolute; top: 12px; right: 12px;
+    width: 28px; height: 28px; border-radius: 8px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    color: #cdd9ff; font-size: 18px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #panel-close:hover { background: rgba(255,80,110,0.18); border-color: rgba(255,120,150,0.4); }
+  .panel-group { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #9ab0e6; }
+  .panel-group .dot { width: 9px; height: 9px; border-radius: 50%; }
+  #p-title { margin: 8px 0 4px; font-size: 22px; font-weight: 700; line-height: 1.2; color: #fff; }
+  #p-path { font-size: 11.5px; color: #7286b8; word-break: break-all; }
+  .panel-meta { margin: 14px 0; display: flex; gap: 16px; font-size: 12px; color: #9ab0e6; }
+  .panel-meta b { color: #eaf0ff; font-weight: 600; }
+  #p-excerpt { font-size: 13.5px; line-height: 1.65; color: #c8d2f2; margin: 12px 0 0; }
+  .panel-section-title { margin: 20px 0 8px; font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #8aa0d8; }
+  #p-links { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip {
+    background: rgba(120,150,255,0.1);
+    border: 1px solid rgba(120,150,255,0.22);
+    color: #d3dcff; font-size: 11.5px; padding: 5px 9px; border-radius: 999px;
+    cursor: pointer; transition: background .15s, transform .1s;
+    font-family: inherit;
+  }
+  .chip:hover { background: rgba(120,150,255,0.22); transform: translateY(-1px); }
+  .chip .cdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+
+  /* Loader */
+  #loader {
+    position: fixed; inset: 0; z-index: 30;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    background: #000; color: #8aa0d8; transition: opacity .6s;
+  }
+  #loader .ring {
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 2px solid rgba(120,150,255,0.2); border-top-color: rgba(150,180,255,0.9);
+    animation: spin 1s linear infinite; margin-bottom: 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loader .txt { font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; }
+  #loader.hide { opacity: 0; pointer-events: none; }
+
+  /* scrollbar */
+  #panel::-webkit-scrollbar { width: 8px; }
+  #panel::-webkit-scrollbar-thumb { background: rgba(120,150,255,0.25); border-radius: 8px; }
+  #panel::-webkit-scrollbar-track { background: transparent; }
+
+  /* Chat answer card */
+  #chat-answer {
+    position: fixed; bottom: 84px; left: 50%; transform: translate(-50%, 12px);
+    width: min(680px, 92vw); z-index: 13;
+    background: rgba(10,14,28,0.8);
+    border: 1px solid rgba(120,150,255,0.25);
+    border-radius: 16px; padding: 16px 20px 14px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 14px 44px rgba(0,0,0,0.6);
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s, transform .3s;
+    max-height: 40vh; overflow-y: auto;
+  }
+  #chat-answer.open { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #chat-answer::-webkit-scrollbar { width: 8px; }
+  #chat-answer::-webkit-scrollbar-thumb { background: rgba(120,150,255,0.25); border-radius: 8px; }
+  #chat-answer::-webkit-scrollbar-track { background: transparent; }
+  .chat-close {
+    position: absolute; top: 8px; right: 10px;
+    width: 24px; height: 24px; border-radius: 7px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    color: #cdd9ff; font-size: 16px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .chat-close:hover { background: rgba(255,80,110,0.18); border-color: rgba(255,120,150,0.4); }
+  .chat-status { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: #8aa0d8; margin-bottom: 7px; display: flex; align-items: center; gap: 7px; }
+  .chat-status.error { color: #ff9aa0; }
+  .chat-answer-text { font-size: 14px; line-height: 1.62; color: #e7ecff; }
+  .chat-sources { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chat-sources .src-label { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #8aa0d8; width: 100%; margin-bottom: 2px; }
+  .chat-dots { display: inline-flex; gap: 3px; }
+  .chat-dots span { width: 5px; height: 5px; border-radius: 50%; background: #8aa0d8; animation: chatdot 1.2s infinite ease-in-out; }
+  .chat-dots span:nth-child(2) { animation-delay: .15s; }
+  .chat-dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes chatdot { 0%,80%,100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+
+  /* Chat input bar */
+  #chat-form {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    width: min(680px, 92vw); z-index: 14;
+    display: flex; gap: 8px; align-items: center;
+    background: rgba(10,14,28,0.76);
+    border: 1px solid rgba(120,150,255,0.25);
+    border-radius: 999px; padding: 7px 7px 7px 20px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.6);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  #chat-form:focus-within { border-color: rgba(150,180,255,0.55); box-shadow: 0 0 0 3px rgba(120,150,255,0.12), 0 14px 40px rgba(0,0,0,0.6); }
+  #chat-input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: #eaf0ff; font-size: 14px; font-family: inherit; padding: 6px 0; }
+  #chat-input::placeholder { color: #7e90c4; }
+  #chat-input:disabled { opacity: 0.5; }
+  .chat-send {
+    flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
+    background: linear-gradient(135deg, #6a8bff, #a86bff);
+    display: flex; align-items: center; justify-content: center; color: #fff;
+    transition: transform .12s, filter .15s;
+  }
+  .chat-send:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+  .chat-send:active:not(:disabled) { transform: translateY(0); }
+  .chat-send:disabled { opacity: 0.45; cursor: default; }
+  .chat-send svg { width: 18px; height: 18px; display: block; }
+
+  /* Mic button (speech-to-text) */
+  #mic-btn {
+    flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid rgba(120,150,255,0.25); background: rgba(20,26,48,0.85);
+    cursor: pointer; color: #cdd9ff;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .12s, background .15s, border-color .15s;
+  }
+  #mic-btn svg { width: 17px; height: 17px; display: block; }
+  #mic-btn:hover:not(:disabled) { background: rgba(32,40,72,0.95); transform: translateY(-1px); }
+  #mic-btn:disabled { opacity: 0.4; cursor: default; }
+  #mic-btn.recording {
+    background: linear-gradient(135deg, #ff5d8f, #ff8c42);
+    border-color: rgba(255,120,150,0.7); color: #fff;
+    animation: micpulse 1.3s infinite;
+  }
+  @keyframes micpulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,93,143,0.55); }
+    70% { box-shadow: 0 0 0 10px rgba(255,93,143,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,93,143,0); }
+  }
+  /* TTS toggle + status dot */
+  #tts-btn svg { width: 16px; height: 16px; vertical-align: middle; }
+  #tts-btn.off { opacity: 0.5; }
+  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  @media (max-width: 640px) {
+    #legend { display: none; }
+    #title h1 { font-size: 15px; }
+    #search { width: 140px; }
+    #panel { width: 92vw; top: 56px; right: 4vw; left: 4vw; }
+    #hint { display: none; }
+    #chat-answer { bottom: 78px; }
+  }
+</style>
+</head>
+<body>
+  <div id="graph"></div>
+  <div class="vignette"></div>
+
+  <div id="loader"><div class="ring"></div><div class="txt">Charting the galaxy&hellip;</div></div>
+
+  <div id="title" class="overlay">
+    <h1>Knowledge Galaxy</h1>
+    <p id="subtitle">&mdash; &mdash;</p>
+  </div>
+
+  <div id="legend" class="overlay">
+    <div class="legend-title">Groups</div>
+    <div id="legend-rows"></div>
+  </div>
+
+  <div id="controls" class="overlay">
+    <input id="search" type="text" placeholder="Search notes&hellip;" autocomplete="off" />
+    <button id="tts-btn" class="btn" title="Voice answers ON" aria-label="Toggle spoken answers"></button>
+    <button id="reset" class="btn" title="Reset view">Reset</button>
+  </div>
+
+  <div id="hint" class="overlay">
+    <b>Click</b> a star &middot; <b>Mic</b> to speak &middot; <b>Drag</b> to orbit &middot; <b>Esc</b> to clear
+  </div>
+
+  <aside id="panel">
+    <button id="panel-close" aria-label="Close">&times;</button>
+    <div class="panel-group"><span class="dot" id="p-dot"></span><span id="p-group"></span></div>
+    <h2 id="p-title"></h2>
+    <div id="p-path"></div>
+    <div class="panel-meta"><span>Connections: <b id="p-degree">0</b></span><span>Node: <b id="p-id">0</b></span></div>
+    <p id="p-excerpt"></p>
+    <div class="panel-section-title">Linked notes</div>
+    <div id="p-links"></div>
+  </aside>
+
+  <div id="chat-answer" aria-live="polite">
+    <button id="chat-close" class="chat-close" aria-label="Dismiss answer">&times;</button>
+    <div id="chat-status" class="chat-status"></div>
+    <div id="chat-answer-text" class="chat-answer-text"></div>
+    <div id="chat-sources" class="chat-sources"></div>
+  </div>
+
+  <form id="chat-form" autocomplete="off">
+    <input id="chat-input" type="text" placeholder="Ask your notes a question&hellip;" autocomplete="off" aria-label="Ask a question" />
+    <button id="mic-btn" type="button" aria-label="Speak your question" title="Speak your question (Chrome)" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+    </button>
+    <button id="chat-send" class="chat-send" type="submit" aria-label="Send question">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </button>
+  </form>
+
+  <script src="graph-data.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+      "three/": "https://cdn.jsdelivr.net/npm/three@0.185.1/",
+      "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.js",
+      "three/webgpu.js": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.webgpu.js",
+      "3d-force-graph": "https://esm.sh/3d-force-graph@1.73?external=three&deps=three@0.185.1"
+    }
+  }
+  </script>
+  <script type="module">
+  import * as THREE from "three";
+  import ForceGraph3D from "3d-force-graph";
+  try {
+  (function () {
+    "use strict";
+
+    function fail(msg) {
+      var el = document.getElementById("loader");
+      el.innerHTML = '<div class="txt" style="color:#ff9aa0;line-height:1.6;text-align:center;padding:0 20px">' + msg + "</div>";
+    }
+    var GRAPH = window.GRAPH;
+    if (!GRAPH) { fail("graph-data.js failed to load."); return; }
+
+    // ---------- helpers ----------
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function nid(x) { return (typeof x === "object" && x !== null) ? x.id : x; }
+
+    // ---------- group colors (assigned in order of first appearance) ----------
+    var PALETTE = [
+      "#ff5d8f", "#4cc9f0", "#ffd166", "#06d6a0", "#c77dff",
+      "#ff8c42", "#80ed99", "#f72585", "#9ad9ff", "#ffafcc"
+    ];
+    var groupColorMap = {};
+    var groupOrder = [];
+    var groupCount = {};
+    GRAPH.nodes.forEach(function (n) {
+      if (!(n.group in groupColorMap)) {
+        groupColorMap[n.group] = PALETTE[groupOrder.length % PALETTE.length];
+        groupOrder.push(n.group);
+        groupCount[n.group] = 0;
+      }
+      groupCount[n.group]++;
+    });
+    function groupColor(g) { return groupColorMap[g] || "#ffffff"; }
+
+    var byId = GRAPH.nodes; // node.id == array index
+
+    // ---------- neighbor map (built once from raw numeric links) ----------
+    var neighborMap = {};
+    GRAPH.nodes.forEach(function (n) { neighborMap[n.id] = new Set(); });
+    GRAPH.links.forEach(function (l) {
+      var a = nid(l.source), b = nid(l.target);
+      if (neighborMap[a]) neighborMap[a].add(b);
+      if (neighborMap[b]) neighborMap[b].add(a);
+    });
+
+    // ---------- glow texture (shared, tinted per-node) ----------
+    function makeGlowTexture() {
+      var c = document.createElement("canvas");
+      c.width = c.height = 128;
+      var ctx = c.getContext("2d");
+      var g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      g.addColorStop(0.0, "rgba(255,255,255,1)");
+      g.addColorStop(0.16, "rgba(255,255,255,0.85)");
+      g.addColorStop(0.42, "rgba(255,255,255,0.32)");
+      g.addColorStop(1.0, "rgba(255,255,255,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 128, 128);
+      var tex = new THREE.CanvasTexture(c);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    // ---------- starfield ----------
+    function addStarfield(scene) {
+      function randDir(r) {
+        var theta = Math.random() * Math.PI * 2;
+        var phi = Math.acos(2 * Math.random() - 1);
+        return [r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi)];
+      }
+      var count = 7000, geo = new THREE.BufferGeometry();
+      var pos = new Float32Array(count * 3), col = new Float32Array(count * 3);
+      var tmp = new THREE.Color();
+      for (var i = 0; i < count; i++) {
+        var p = randDir(700 + Math.random() * 1500);
+        pos[i * 3] = p[0]; pos[i * 3 + 1] = p[1]; pos[i * 3 + 2] = p[2];
+        var t = Math.random();
+        if (t < 0.78) tmp.setRGB(1, 1, 1);
+        else if (t < 0.9) tmp.setRGB(0.7, 0.83, 1);
+        else tmp.setRGB(1, 0.86, 0.66);
+        var b = 0.35 + Math.random() * 0.65;
+        col[i * 3] = tmp.r * b; col[i * 3 + 1] = tmp.g * b; col[i * 3 + 2] = tmp.b * b;
+      }
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+      scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+        size: 1.5, sizeAttenuation: true, vertexColors: true,
+        transparent: true, opacity: 0.9, depthWrite: false
+      })));
+
+      // faint dust layer
+      var n2 = 4000, p2 = new Float32Array(n2 * 3), geo2 = new THREE.BufferGeometry();
+      for (var j = 0; j < n2; j++) {
+        var q = randDir(400 + Math.random() * 1600);
+        p2[j * 3] = q[0]; p2[j * 3 + 1] = q[1]; p2[j * 3 + 2] = q[2];
+      }
+      geo2.setAttribute("position", new THREE.BufferAttribute(p2, 3));
+      scene.add(new THREE.Points(geo2, new THREE.PointsMaterial({
+        size: 0.7, color: 0x6f86c0, transparent: true, opacity: 0.4, depthWrite: false
+      })));
+    }
+
+    // ---------- state ----------
+    var glowTex = makeGlowTexture();
+    var nodeObjects = {};
+    var selectedId = null;
+    var neighborSet = null;
+    var brainSet = null;      // note ids returned by the last chat answer
+    var pulseRAF = null;
+
+    // ---------- build graph ----------
+    var dom = document.getElementById("graph");
+    var Graph = ForceGraph3D()(dom)
+      .backgroundColor("#000000")
+      .showNavInfo(false)
+      .nodeLabel(function (node) {
+        return '<div class="node-tip"><span class="dot" style="background:' + groupColor(node.group) + ";box-shadow:0 0 8px " + groupColor(node.group) + '"></span>' +
+          escapeHtml(node.label) + "<small>" + escapeHtml(node.group) + "</small></div>";
+      })
+      .nodeThreeObjectExtend(false)
+      .nodeThreeObject(function (node) {
+        var color = groupColor(node.group);
+        var grp = new THREE.Group();
+        var core = new THREE.Mesh(
+          new THREE.SphereGeometry(2.5, 20, 20),
+          new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 1 })
+        );
+        var glow = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: glowTex, color: color, transparent: true, opacity: 0.85,
+          blending: THREE.AdditiveBlending, depthWrite: false
+        }));
+        glow.scale.set(16, 16, 1);
+        grp.add(glow);
+        grp.add(core);
+        grp.userData.core = core;
+        grp.userData.glow = glow;
+        nodeObjects[node.id] = grp;
+        return grp;
+      })
+      .linkColor(function (link) {
+        if (selectedId == null) return "rgba(120,150,255,0.18)";
+        var a = nid(link.source), b = nid(link.target);
+        return (a === selectedId || b === selectedId) ? "rgba(255,255,255,0.9)" : "rgba(90,110,170,0.05)";
+      })
+      .linkWidth(function (link) {
+        if (selectedId == null) return 0.5;
+        var a = nid(link.source), b = nid(link.target);
+        return (a === selectedId || b === selectedId) ? 1.6 : 0.15;
+      })
+      .linkOpacity(0.9)
+      .onNodeClick(function (node) { focusNode(node.id); })
+      .onBackgroundClick(function () { clearSelection(); })
+      .onNodeHover(function (node) { dom.style.cursor = node ? "pointer" : "default"; });
+
+    addStarfield(Graph.scene());
+
+    // push the far plane out so distant stars render
+    var cam = Graph.camera();
+    cam.far = 8000;
+    cam.near = 0.1;
+    cam.updateProjectionMatrix();
+
+    var controls = Graph.controls();
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.autoRotate = false;
+    controls.autoRotateSpeed = 0.45;
+
+    // load data (forces keep their defaults; tuning omitted to stay version-safe)
+    Graph.graphData(GRAPH);
+
+    Graph.onEngineStop(function () {
+      Graph.zoomToFit(1200, 90);
+      controls.autoRotate = true;
+      hideLoader();
+    });
+    setTimeout(hideLoader, 9000); // safety
+
+    function hideLoader() {
+      var l = document.getElementById("loader");
+      if (l && !l._hide) { l._hide = true; l.classList.add("hide"); }
+    }
+
+    // ---------- boot greeting ----------
+    // "Good evening, sir. [N] notes indexed, all present and accounted for."
+    // Spoken aloud (after the browser's first-gesture audio unlock) and shown
+    // in the answer card. Greeting contains no source nodes -> no camera move.
+    var greeted = false;
+    function bootGreet() {
+      if (greeted) return;
+      greeted = true;
+      var n = (window.GRAPH && GRAPH.nodes) ? GRAPH.nodes.length : 0;
+      var text = "Good evening, sir. " + n + " notes indexed, all present and accounted for.";
+      // Show it in the answer card (no sources -> no "Notes used" chips).
+      showAnswer(text, [], false);
+      // Speak it once audio is unlocked (the first-gesture handlers below prime
+      // speechSynthesis; speak() is a no-op until then and the greeting simply
+      // waits for the user's first click/keypress, then is heard).
+      speakGreeting(text);
+    }
+    // Try to greet as soon as the graph is ready; speech follows the gesture.
+    setTimeout(bootGreet, 900);
+
+    // speak() is defined later in the module; greeting uses a tiny wrapper so
+    // it can be queued before audio is unlocked.
+    var pendingGreeting = null;
+    function speakGreeting(text) {
+      if (typeof speak === "function" && userInteracted) {
+        speak(text);
+      } else {
+        pendingGreeting = text;
+      }
+    }
+
+    // ---------- selection / focus ----------
+    function computeNeighbors(id) { return neighborMap[id] || new Set(); }
+
+    function updateNodeMaterials() {
+      GRAPH.nodes.forEach(function (n) {
+        var obj = nodeObjects[n.id];
+        if (!obj) return;
+        var isSel = n.id === selectedId;
+        var inBrain = brainSet && brainSet.has(n.id);
+        var active;
+        if (selectedId != null) {
+          active = isSel || (neighborSet && neighborSet.has(n.id)) || inBrain;
+        } else if (brainSet) {
+          active = inBrain;
+        } else {
+          active = true;
+        }
+        obj.userData.core.material.opacity = active ? 1 : 0.12;
+        // brain nodes' glow is driven by the pulse loop; others follow active state
+        if (!inBrain) {
+          obj.userData.glow.material.opacity = active ? (isSel ? 1 : 0.8) : 0.05;
+          obj.userData.glow.scale.set(16, 16, 1);
+        }
+        var s = isSel ? 1.55 : (inBrain ? 1.3 : 1);
+        obj.scale.set(s, s, s);
+      });
+    }
+
+    function focusNode(id, opts) {
+      opts = opts || {};
+      var node = byId[id];
+      if (!node) return;
+      selectedId = id;
+      // When focus is triggered by a chat answer, keep the source cluster lit
+      // (brainSet) rather than switching the highlight to just one node's
+      // neighbors. The top source node is still selected so the panel shows it.
+      if (!opts.fromBrain) {
+        neighborSet = computeNeighbors(id);
+      }
+      controls.autoRotate = false;
+      updateNodeMaterials();
+      Graph.refresh();
+      openPanel(node);
+
+      var nx = typeof node.x === "number" ? node.x : 0;
+      var ny = typeof node.y === "number" ? node.y : 0;
+      var nz = typeof node.z === "number" ? node.z : 0;
+      var dist = 75;
+      Graph.cameraPosition(
+        { x: nx, y: ny, z: nz + dist },
+        { x: nx, y: ny, z: nz },
+        1200
+      );
+      setTimeout(function () {
+        controls.target.set(nx, ny, nz);
+        controls.update();
+      }, 1250);
+    }
+
+    function clearSelection() {
+      if (selectedId == null) return;
+      selectedId = null;
+      neighborSet = null;
+      controls.autoRotate = true;
+      updateNodeMaterials();
+      Graph.refresh();
+      closePanel();
+    }
+
+    // ---------- panel ----------
+    var panel = document.getElementById("panel");
+    function openPanel(node) {
+      document.getElementById("p-group").textContent = node.group;
+      var dot = document.getElementById("p-dot");
+      dot.style.background = groupColor(node.group);
+      dot.style.boxShadow = "0 0 10px " + groupColor(node.group);
+      document.getElementById("p-title").textContent = node.label;
+      document.getElementById("p-path").textContent = node.path;
+      document.getElementById("p-id").textContent = "#" + node.id;
+      var neigh = computeNeighbors(node.id);
+      document.getElementById("p-degree").textContent = neigh.size;
+      document.getElementById("p-excerpt").textContent = node.excerpt || "(no excerpt)";
+
+      var linksEl = document.getElementById("p-links");
+      linksEl.innerHTML = "";
+      var arr = Array.from(neigh).map(function (id) { return byId[id]; }).filter(Boolean);
+      arr.sort(function (a, b) { return a.label.localeCompare(b.label); });
+      if (!arr.length) {
+        linksEl.innerHTML = '<span style="color:#7286b8;font-size:12px">No links</span>';
+      } else {
+        arr.forEach(function (nb) {
+          var chip = document.createElement("button");
+          chip.className = "chip";
+          chip.innerHTML = '<span class="cdot" style="background:' + groupColor(nb.group) + '"></span>' + escapeHtml(nb.label);
+          chip.addEventListener("click", function () { focusNode(nb.id); });
+          linksEl.appendChild(chip);
+        });
+      }
+      panel.classList.add("open");
+    }
+    function closePanel() { panel.classList.remove("open"); }
+
+    document.getElementById("panel-close").addEventListener("click", clearSelection);
+    document.getElementById("reset").addEventListener("click", function () {
+      clearSelection();
+      Graph.zoomToFit(1000, 90);
+    });
+
+    // ---------- search ----------
+    var search = document.getElementById("search");
+    search.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        var q = search.value.trim().toLowerCase();
+        if (!q) return;
+        var found = GRAPH.nodes.find(function (n) { return n.label.toLowerCase().indexOf(q) !== -1; });
+        if (found) { focusNode(found.id); search.blur(); }
+        else {
+          search.style.borderColor = "rgba(255,120,150,0.7)";
+          setTimeout(function () { search.style.borderColor = ""; }, 700);
+        }
+      }
+    });
+
+    window.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        var ca = document.getElementById("chat-answer");
+        if (ca.classList.contains("open")) {
+          ca.classList.remove("open");
+          document.getElementById("hint").style.opacity = "1";
+          setBrain([]);
+          stopSpeaking();
+          stopListening(true);
+        } else {
+          clearSelection();
+        }
+      }
+    });
+
+    // ---------- chat brain ----------
+    var sessionId = "s-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    var chatForm = document.getElementById("chat-form");
+    var chatInput = document.getElementById("chat-input");
+    var chatSend = document.getElementById("chat-send");
+    var chatAnswer = document.getElementById("chat-answer");
+    var chatStatus = document.getElementById("chat-status");
+    var chatText = document.getElementById("chat-answer-text");
+    var chatSources = document.getElementById("chat-sources");
+    var hintEl = document.getElementById("hint");
+
+    function setBrain(ids) {
+      brainSet = (ids && ids.length) ? new Set(ids) : null;
+      updateNodeMaterials();
+      Graph.refresh();
+      if (brainSet && brainSet.size) { startBrainPulse(); }
+    }
+
+    function startBrainPulse() {
+      if (pulseRAF) return;
+      (function loop() {
+        if (!brainSet || brainSet.size === 0) { pulseRAF = null; return; }
+        var t = performance.now() * 0.0028;
+        var p = 0.5 + 0.5 * Math.sin(t);
+        brainSet.forEach(function (id) {
+          var obj = nodeObjects[id];
+          if (obj && obj.userData.glow) {
+            obj.userData.glow.material.opacity = 0.6 + 0.4 * p;
+            var s = 17 + 4 * p;
+            obj.userData.glow.scale.set(s, s, 1);
+          }
+        });
+        pulseRAF = requestAnimationFrame(loop);
+      })();
+    }
+
+    var lastSourcesCount = 0;
+    var ttsEnabled = true;
+    var currentStatus = "idle";
+
+    // ---------- unified status line ----------
+    function statusHTML(color, label) {
+      return '<span class="status-dot" style="background:' + color + ";box-shadow:0 0 6px " + color + '"></span>' + label;
+    }
+    function setStatus(state) {
+      currentStatus = state;
+      chatStatus.classList.remove("error");
+      if (state === "listening") {
+        chatStatus.innerHTML = statusHTML("#ffb347", "listening\u2026");
+      } else if (state === "thinking") {
+        chatStatus.innerHTML = '<span class="chat-dots"><span></span><span></span><span></span></span> thinking\u2026';
+      } else if (state === "speaking") {
+        chatStatus.innerHTML = statusHTML("#06d6a0", "speaking\u2026");
+      } else if (state === "error") {
+        chatStatus.classList.add("error");
+        chatStatus.textContent = "Error";
+      } else { // done
+        chatStatus.textContent = lastSourcesCount
+          ? "Answer \u00B7 " + lastSourcesCount + " source" + (lastSourcesCount > 1 ? "s" : "")
+          : "Answer";
+      }
+    }
+
+    // ---------- prove the answer in the galaxy ----------
+    // When Jarvis answers from notes, fly to the top source node and open its
+    // side panel so the user can see exactly where the answer came from. When
+    // the answer drew on 4+ notes, frame the whole cluster instead of one node.
+    function proveAnswer(ids) {
+      if (!ids || !ids.length) { return; }
+      var valid = ids.filter(function (id) { return byId[id] && typeof byId[id].x === "number"; });
+      if (!valid.length) { return; }
+      var topId = valid[0];
+
+      if (ids.length >= 4) {
+        // Frame the whole source cluster.
+        controls.autoRotate = false;
+        var nodes = valid.map(function (id) { return byId[id]; });
+        var box = { minX: Infinity, minY: Infinity, minZ: Infinity,
+                    maxX: -Infinity, maxY: -Infinity, maxZ: -Infinity };
+        nodes.forEach(function (n) {
+          box.minX = Math.min(box.minX, n.x); box.maxX = Math.max(box.maxX, n.x);
+          box.minY = Math.min(box.minY, n.y); box.maxY = Math.max(box.maxY, n.y);
+          box.minZ = Math.min(box.minZ, n.z); box.maxZ = Math.max(box.maxZ, n.z);
+        });
+        var cx = (box.minX + box.maxX) / 2;
+        var cy = (box.minY + box.maxY) / 2;
+        var cz = (box.minZ + box.maxZ) / 2;
+        var span = Math.max(box.maxX - box.minX, box.maxY - box.minY, box.maxZ - box.minZ, 30);
+        var dist = Math.min(400, span * 2.2 + 60);
+        selectedId = null;       // no single-node highlight
+        neighborSet = null;
+        // brainSet (the source ids) stays lit via updateNodeMaterials.
+        updateNodeMaterials();
+        Graph.refresh();
+        openPanel(byId[topId]);  // show the top source note's excerpt
+        Graph.cameraPosition(
+          { x: cx, y: cy, z: cz + dist },
+          { x: cx, y: cy, z: cz },
+          1200
+        );
+        setTimeout(function () {
+          controls.target.set(cx, cy, cz);
+          controls.update();
+        }, 1250);
+      } else {
+        // 1–3 notes: fly the camera to the top source node (lights it + its
+        // neighbors, opens its side panel). fromBrain keeps the whole answer
+        // cluster glowing instead of switching to single-node neighbors.
+        focusNode(topId, { fromBrain: true });
+      }
+    }
+
+    function showAnswer(answer, ids, isError) {
+      lastSourcesCount = ids.length;
+      chatText.textContent = answer;
+      chatSources.innerHTML = "";
+      if (ids.length) {
+        var label = document.createElement("span");
+        label.className = "src-label"; label.textContent = "Notes used";
+        chatSources.appendChild(label);
+        ids.forEach(function (id) {
+          var n = byId[id]; if (!n) return;
+          var chip = document.createElement("button");
+          chip.className = "chip";
+          chip.innerHTML = '<span class="cdot" style="background:' + groupColor(n.group) + ";box-shadow:0 0 6px " + groupColor(n.group) + '"></span>' + escapeHtml(n.label);
+          chip.addEventListener("click", function () { focusNode(id); });
+          chatSources.appendChild(chip);
+        });
+      }
+      chatAnswer.classList.add("open");
+      hintEl.style.opacity = "0";
+      if (isError) { setStatus("error"); return; }
+      // Speak ONLY the short answer (2–3 sentences). The full note excerpt is
+      // shown on screen in the side panel — never read it aloud.
+      if (!speak(answer)) setStatus("done");
+    }
+
+    function setThinking() {
+      setStatus("thinking");
+      chatText.textContent = "";
+      chatSources.innerHTML = "";
+      chatAnswer.classList.add("open");
+      hintEl.style.opacity = "0";
+    }
+
+    function submitQuestion() {
+      var q = chatInput.value.trim();
+      if (!q || chatInput.disabled) return;
+      chatInput.value = "";
+      stopListening(true);
+      // Voice-driven memory capture: anything starting with "remember that"
+      // grows the brain instead of querying it.
+      if (/^remember\s+that\b/i.test(q)) {
+        submitRemember(q);
+        return;
+      }
+      setThinking();
+      chatSend.disabled = true; chatInput.disabled = true;
+      fetch("chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q, session_id: sessionId })
+      }).then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+      }).then(function (res) {
+        chatSend.disabled = false; chatInput.disabled = false;
+        var d = res.data || {};
+        var ids = d.nodes || [];
+        if (d.answer) {
+          showAnswer(d.answer, ids, !res.ok);
+          setBrain(ids);
+          if (!res.ok && ids.length === 0) { /* no sources, nothing to prove */ }
+          else if (ids.length) { proveAnswer(ids); }
+        } else {
+          showAnswer("No answer returned from the server.", [], true);
+          setBrain([]);
+        }
+        chatInput.focus();
+      }).catch(function (err) {
+        chatSend.disabled = false; chatInput.disabled = false;
+        showAnswer("Couldn't reach the server: " + err, [], true);
+        setBrain([]);
+      });
+    }
+
+    chatForm.addEventListener("submit", function (e) { e.preventDefault(); submitQuestion(); });
+
+    // ---------- /remember — grow the brain live ----------
+    function butlerConfirm() {
+      var lines = [
+        "Noted and filed, sir. A new star joins the constellation.",
+        "Committed to memory, sir \u2014 though I confess I never forget.",
+        "Filed under 'things sir wishes remembered'. Safely lodged.",
+        "Logged and indexed, sir. The galaxy grows by one.",
+        "Consider it remembered, sir. I've made a note of it. Quite literally.",
+        "Noted, sir. If it slips my mind, I shall hand in my resignation.",
+        "Wax cylinder not required, sir \u2014 captured and catalogued."
+      ];
+      return lines[Math.floor(Math.random() * lines.length)];
+    }
+
+    function addLegendRow(g) {
+      var row = document.createElement("div");
+      row.className = "legend-row";
+      row.innerHTML = '<span class="legend-dot" style="background:' + groupColor(g) + ";box-shadow:0 0 8px " + groupColor(g) + '"></span>' +
+        "<span>" + escapeHtml(g) + "</span><span class=\"legend-count\">" + groupCount[g] + "</span>";
+      legendRows.appendChild(row);
+    }
+
+    // Add a freshly-captured note to the live graph: born at its most-related
+    // node's position, connected to its parent, then glow + fly + speak.
+    function addNodeLive(node, parentId, newLinks) {
+      // Birth position: at the parent (most-related) node, nudged aside.
+      if (parentId != null && byId[parentId] && typeof byId[parentId].x === "number") {
+        var p = byId[parentId];
+        node.x = p.x + (Math.random() - 0.5) * 18;
+        node.y = p.y + (Math.random() - 0.5) * 18;
+        node.z = p.z + (Math.random() - 0.5) * 18;
+      } else {
+        node.x = (Math.random() - 0.5) * 120;
+        node.y = (Math.random() - 0.5) * 120;
+        node.z = (Math.random() - 0.5) * 120;
+      }
+      // Register a new group color (and legend row) if captures is new.
+      if (!(node.group in groupColorMap)) {
+        groupColorMap[node.group] = PALETTE[groupOrder.length % PALETTE.length];
+        groupOrder.push(node.group);
+        groupCount[node.group] = 0;
+        addLegendRow(node.group);
+      }
+      groupCount[node.group]++;
+      // Append so node.id == array index (matches server id).
+      GRAPH.nodes.push(node);
+      byId = GRAPH.nodes;
+      neighborMap[node.id] = new Set();
+      newLinks.forEach(function (l) {
+        var a = (typeof l.source === "object") ? l.source.id : l.source;
+        var b = (typeof l.target === "object") ? l.target.id : l.target;
+        GRAPH.links.push({ source: a, target: b });
+        if (neighborMap[a]) neighborMap[a].add(b);
+        if (neighborMap[b]) neighborMap[b].add(a);
+      });
+      // Re-render incrementally (existing nodes keep their positions).
+      Graph.graphData(GRAPH);
+      document.getElementById("subtitle").textContent =
+        GRAPH.nodes.length + " notes  \u00B7  " + GRAPH.links.length + " links  \u00B7  " + groupOrder.length + " groups";
+    }
+
+    function submitRemember(text) {
+      setThinking();
+      chatSend.disabled = true; chatInput.disabled = true;
+      fetch("remember", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text, session_id: sessionId })
+      }).then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+      }).then(function (res) {
+        chatSend.disabled = false; chatInput.disabled = false;
+        var d = res.data || {};
+        if (d.error) {
+          showAnswer(d.error, [], true);
+          return;
+        }
+        var node = d.node;
+        // Add the new star to the galaxy.
+        addNodeLive(node, d.parent_id, d.links || []);
+        // Brief glow pulse + fly the camera to it, once its 3D object exists.
+        setTimeout(function () {
+          setBrain([node.id]);
+          focusNode(node.id, { fromBrain: true });
+        }, 450);
+        // Witty spoken confirmation.
+        showAnswer(butlerConfirm(), [node.id], false);
+        chatInput.focus();
+      }).catch(function (err) {
+        chatSend.disabled = false; chatInput.disabled = false;
+        showAnswer("I couldn't file that, sir: " + err, [], true);
+      });
+    }
+
+    document.getElementById("chat-close").addEventListener("click", function () {
+      chatAnswer.classList.remove("open");
+      hintEl.style.opacity = "1";
+      setBrain([]);
+      stopSpeaking();
+      stopListening(true);
+    });
+
+    // ---------- voice: text-to-speech + speech-to-text ----------
+    var micBtn = document.getElementById("mic-btn");
+    var ttsBtn = document.getElementById("tts-btn");
+    var userInteracted = false;
+
+    // Browsers block audio until the page has been interacted with. Prime
+    // speechSynthesis on the first gesture so the first answer speaks reliably.
+    function unlockSpeech() {
+      if (userInteracted) return;
+      userInteracted = true;
+      if (!window.speechSynthesis) return;
+      try {
+        var u = new SpeechSynthesisUtterance(" ");
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+      // If the boot greeting was queued before audio unlocked, speak it now.
+      if (pendingGreeting && ttsEnabled) {
+        var g = pendingGreeting; pendingGreeting = null;
+        // Tiny delay so the priming utterance fully clears first.
+        setTimeout(function () { speak(g); }, 120);
+      }
+    }
+    window.addEventListener("pointerdown", unlockSpeech);
+    window.addEventListener("keydown", unlockSpeech);
+    window.addEventListener("touchstart", unlockSpeech);
+
+    // ----- text-to-speech (prefer a British English voice) -----
+    var ttsVoices = [];
+    function loadVoices() {
+      if (window.speechSynthesis) ttsVoices = window.speechSynthesis.getVoices() || [];
+    }
+    if (window.speechSynthesis) {
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    function pickVoice() {
+      return ttsVoices.find(function (v) { return /^en-GB/i.test(v.lang); })
+          || ttsVoices.find(function (v) { return /^en/i.test(v.lang); })
+          || null;
+    }
+    function speak(text) {
+      if (!window.speechSynthesis) return false;
+      window.speechSynthesis.cancel();
+      if (!ttsEnabled || !text) return false;
+      var u = new SpeechSynthesisUtterance(text);
+      var v = pickVoice();
+      if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = "en-GB"; }
+      u.rate = 1; u.pitch = 1;
+      u.onstart = function () { setStatus("speaking"); };
+      u.onend = function () { setStatus("done"); };
+      u.onerror = function () { setStatus("done"); };
+      window.speechSynthesis.speak(u);
+      // Chrome pauses long utterances ~15s; nudge it to keep going.
+      if (window.__ttsKeepAlive) clearInterval(window.__ttsKeepAlive);
+      window.__ttsKeepAlive = setInterval(function () {
+        if (!window.speechSynthesis.speaking) { clearInterval(window.__ttsKeepAlive); return; }
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+      }, 7000);
+      return true;
+    }
+    function stopSpeaking() {
+      if (window.__ttsKeepAlive) { clearInterval(window.__ttsKeepAlive); }
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    }
+
+    var SPEAKER_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>';
+    var SPEAKER_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+    ttsBtn.innerHTML = SPEAKER_ON;
+    ttsBtn.addEventListener("click", function () {
+      ttsEnabled = !ttsEnabled;
+      ttsBtn.classList.toggle("off", !ttsEnabled);
+      ttsBtn.innerHTML = ttsEnabled ? SPEAKER_ON : SPEAKER_OFF;
+      ttsBtn.title = "Voice answers " + (ttsEnabled ? "ON" : "OFF");
+      if (!ttsEnabled) {
+        stopSpeaking();
+        if (currentStatus === "speaking") setStatus("done");
+      }
+    });
+
+    // ----- speech-to-text (webkitSpeechRecognition, Chrome) -----
+    var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var recognition = null;
+    var listening = false;
+    if (Recognition) {
+      recognition = new Recognition();
+      recognition.lang = "en-GB";
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      recognition.onstart = function () {
+        listening = true;
+        micBtn.classList.add("recording");
+        stopSpeaking();
+        setStatus("listening");
+        chatText.textContent = "";
+        chatSources.innerHTML = "";
+        chatAnswer.classList.add("open");
+        hintEl.style.opacity = "0";
+      };
+      recognition.onresult = function (event) {
+        var interim = "", final = "";
+        for (var i = event.resultIndex; i < event.results.length; i++) {
+          var tr = event.results[i];
+          if (tr.isFinal) final += tr[0].transcript; else interim += tr[0].transcript;
+        }
+        chatInput.value = (final || interim).trim();
+        if (final) {
+          stopListening(false);
+          submitQuestion();
+        }
+      };
+      recognition.onerror = function (event) {
+        if (event.error === "aborted") return;
+        var msg = "Mic error";
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") msg = "Mic permission denied";
+        else if (event.error === "no-speech") msg = "Didn't catch that";
+        else if (event.error === "network") msg = "Network error";
+        else if (event.error) msg = event.error;
+        chatStatus.classList.add("error");
+        chatStatus.innerHTML = '<span class="status-dot" style="background:#ff5d8f;box-shadow:0 0 6px #ff5d8f"></span>' + msg;
+      };
+      recognition.onend = function () {
+        listening = false;
+        micBtn.classList.remove("recording");
+      };
+      micBtn.disabled = false;
+    } else {
+      micBtn.title = "Speech recognition needs Chrome";
+    }
+
+    function stopListening(cancel) {
+      if (recognition && listening) {
+        try { if (cancel) recognition.abort(); else recognition.stop(); } catch (e) {}
+      }
+    }
+
+    micBtn.addEventListener("click", function () {
+      if (!recognition) return;
+      if (listening) { stopListening(true); return; }
+      stopSpeaking();
+      try { recognition.start(); } catch (e) {}
+    });
+
+    // ---------- legend ----------
+    var legendRows = document.getElementById("legend-rows");
+    groupOrder.forEach(function (g) {
+      var row = document.createElement("div");
+      row.className = "legend-row";
+      row.innerHTML = '<span class="legend-dot" style="background:' + groupColor(g) + ";box-shadow:0 0 8px " + groupColor(g) + '"></span>' +
+        "<span>" + escapeHtml(g) + "</span><span class=\"legend-count\">" + groupCount[g] + "</span>";
+      legendRows.appendChild(row);
+    });
+
+    document.getElementById("subtitle").textContent =
+      GRAPH.nodes.length + " notes  \u00B7  " + GRAPH.links.length + " links  \u00B7  " + groupOrder.length + " groups";
+
+    // ---------- resize ----------
+    function resize() { Graph.width(window.innerWidth).height(window.innerHeight); }
+    window.addEventListener("resize", resize);
+    resize();
+  })();
+  } catch (e) {
+    window.__moduleError = (e && e.stack) || (e && e.message) || String(e);
+    var el = document.getElementById("loader");
+    if (el) { el.innerHTML = ""; el.appendChild(document.createTextNode(window.__moduleError)); el.style.whiteSpace = "pre-wrap"; el.style.padding = "24px"; el.style.fontSize = "12px"; el.style.color = "#ff9aa0"; }
+  }
+  </script>
+  <script>
+    // Fallback: if the ES module graph never initializes (e.g. CDN blocked),
+    // surface a readable error instead of an infinite spinner.
+    setTimeout(function () {
+      if (!document.querySelector("canvas")) {
+        var el = document.getElementById("loader");
+        if (el && !el.classList.contains("hide")) {
+          el.innerHTML = '<div class="txt" style="color:#ff9aa0;line-height:1.6;text-align:center;padding:0 24px">'
+            + "Could not initialize the 3D galaxy.<br>"
+            + "The browser needs network access to esm.sh to load the 3D libraries."
+            + "</div>";
+        }
+      }
+    }, 13000);
+  </script>
+</body>
+</html>

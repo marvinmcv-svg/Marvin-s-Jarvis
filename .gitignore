@@ -1,0 +1,14 @@
+# Secrets — NEVER commit config.json (contains the API key).
+config.json
+
+# Runtime logs
+server.log
+*.log
+
+# Python caches
+__pycache__/
+*.pyc
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -1,0 +1,56 @@
+{
+  "_README": "Copy the block for your provider into config.json. provider is optional (auto-detected from model name: claude*->anthropic, gemini*->gemini, else openai). base_url is optional (uses the provider default). max_tokens is optional (default 400).",
+
+  "_example_anthropic": {
+    "provider": "anthropic",
+    "api_key": "sk-ant-api03-...",
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 400
+  },
+
+  "_example_openai": {
+    "provider": "openai",
+    "api_key": "sk-proj-...",
+    "model": "gpt-4o",
+    "max_tokens": 400
+  },
+
+  "_example_openrouter_many_models": {
+    "provider": "openai",
+    "api_key": "sk-or-v1-...",
+    "model": "anthropic/claude-3.5-sonnet",
+    "base_url": "https://openrouter.ai/api/v1/chat/completions",
+    "max_tokens": 400
+  },
+
+  "_example_groq_fast": {
+    "provider": "openai",
+    "api_key": "gsk_...",
+    "model": "llama-3.3-70b-versatile",
+    "base_url": "https://api.groq.com/openai/v1/chat/completions",
+    "max_tokens": 400
+  },
+
+  "_example_together_ai": {
+    "provider": "openai",
+    "api_key": "...",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "base_url": "https://api.together.xyz/v1/chat/completions",
+    "max_tokens": 400
+  },
+
+  "_example_local_ollama_free": {
+    "provider": "openai",
+    "api_key": "ollama",
+    "model": "llama3.1",
+    "base_url": "http://localhost:11434/v1/chat/completions",
+    "max_tokens": 400
+  },
+
+  "_example_google_gemini": {
+    "provider": "gemini",
+    "api_key": "AIza...",
+    "model": "gemini-1.5-flash",
+    "max_tokens": 400
+  }
+}
