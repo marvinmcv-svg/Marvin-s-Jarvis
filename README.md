@@ -111,10 +111,86 @@ knowledge-galaxy/
 
 ---
 
+## ☁️ Deploy to Vercel
+
+This repo deploys to Vercel as-is: the `viewer/` folder is served as static files, and `api/*.py` are Vercel Python serverless functions (`/api/chat`, `/api/boot`, `/api/remember`). The build step runs `build.py` to generate `viewer/graph-data.js`.
+
+### Deploy steps
+
+1. Push this repo to GitHub (already done if you're reading this there).
+
+2. Go to **https://vercel.com/new** → import your repo.
+
+3. Vercel auto-detects the Python + static setup from `vercel.json`. **No build settings to change.**
+
+4. **Add your API key as an environment variable** (this is how Vercel keeps secrets — never commit `config.json`):
+   - In the Vercel deploy dialog → **"Environment Variables"**
+   - Key: `OPENROUTER_API_KEY`  →  Value: `sk-or-v1-...your key...`
+   - (Optional) Key: `OPENROUTER_MODELS`  →  Value: `model-a:free,model-b:free,...` (comma-separated free model list for rotation; if omitted, uses `config.json`'s `models`)
+
+5. Click **Deploy**. Your galaxy is live at `https://your-project.vercel.app`.
+
+### Why it works on Vercel
+- `kg_core.py` is the single source of truth — both `server.py` (local) and `api/*.py` (Vercel) import it.
+- Config is **env-var first** (Vercel) with `config.json` fallback (local).
+- Free-model **rotation**: if a free OpenRouter model errors (rate limit, provider down, unavailable), Jarvis automatically rotates to the next model in the list.
+- `/remember` writes a real markdown note locally; on Vercel's read-only filesystem it gracefully returns the node for the **live graph update** (the note lives in the session, not on disk).
+
+### Vercel limitations to know
+- **Captured notes don't persist on Vercel** (serverless filesystem is read-only at runtime). They live in the live graph for your session. To keep captures permanently, run Jarvis locally with `./start.sh` (where it can write to `notes/captures/`).
+- **Conversation history** is per-warm-instance (best-effort). Follow-ups within a few minutes work; after a cold start the butler forgets.
+
+---
+
+## 🔄 Free-model rotation (OpenRouter)
+
+Set a `models` array in `config.json` (or `OPENROUTER_MODELS` env var, comma-separated). Jarvis tries them **in order**; on a rate-limit / provider error / model-unavailable it moves to the next. On an auth error (bad key) it stops immediately.
+
+```json
+{
+  "provider": "openai",
+  "api_key": "sk-or-v1-...",
+  "base_url": "https://openrouter.ai/api/v1/chat/completions",
+  "models": [
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "google/gemma-4-31b-it:free",
+    "openai/gpt-oss-20b:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free"
+  ]
+}
+```
+
+Browse the current free list at https://openrouter.ai/models?max_price=0 — just paste any `:free` slugs into the `models` array.
+
+---
+
 ## Rebuilding the graph after editing notes
 
 ```bash
 python3 build.py     # re-scans notes/ and regenerates viewer/graph-data.js
 ```
 
-The server also runs this automatically when you use "remember that..." to add a note.
+The server also runs this automatically when you use "remember that..." to add a note (local only).
+
+---
+
+## File map
+
+```
+knowledge-galaxy/
+├── kg_core.py              ← Shared logic (config, retrieval, LLM+rotation, handlers)
+├── server.py               ← Local server (port 4700) — thin wrapper around kg_core
+├── api/                    ← Vercel serverless functions (also wrap kg_core)
+│   ├── chat.py             ← POST /api/chat
+│   ├── boot.py             ← GET /api/boot
+│   └── remember.py         ← POST /api/remember
+├── vercel.json             ← Vercel config (build + static + rewrites)
+├── config.json             ← YOUR API KEY (gitignored, never committed)
+├── config.example.json     ← Copy-paste blocks for every provider
+├── start.sh                ← Local launcher
+├── build.py                ← Scans notes/*.md → viewer/graph-data.js
+├── notes/                  ← Your markdown notes
+└── viewer/
+    ├── index.html          ← Cinematic 3D viewer + voice + chat (CDN libs)
+    └── graph-data.js       ← Generated graph data
+```

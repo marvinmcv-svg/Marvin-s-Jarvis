@@ -829,7 +829,7 @@
       }
       setThinking();
       chatSend.disabled = true; chatInput.disabled = true;
-      fetch("chat", {
+      fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: q, session_id: sessionId })
@@ -922,7 +922,7 @@
     function submitRemember(text) {
       setThinking();
       chatSend.disabled = true; chatInput.disabled = true;
-      fetch("remember", {
+      fetch("/api/remember", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: text, session_id: sessionId })

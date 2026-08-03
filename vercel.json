@@ -1,0 +1,11 @@
+{
+  "buildCommand": "python3 build.py",
+  "outputDirectory": "viewer",
+  "rewrites": [
+    { "source": "/", "destination": "/viewer/index.html" },
+    { "source": "/viewer", "destination": "/viewer/index.html" }
+  ],
+  "headers": [
+    { "source": "/api/(.*)", "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }] }
+  ]
+}
