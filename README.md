@@ -39,6 +39,17 @@ http://localhost:4700/
 
 (Chrome is required for the speech-to-text mic button.)
 
+> **Using 9Router?** 9Router is a self-hosted local gateway (runs on YOUR machine at `http://localhost:20128/v1`). Jarvis's `server.py` must run on the **same machine** as 9Router for them to connect. So: clone this repo to the machine running 9Router, then run `./start.sh` there. Your `config.json` should be:
+> ```json
+> {
+>   "provider": "openai",
+>   "api_key": "your-9router-api-key",
+>   "model": "kr/claude-sonnet-4.5",
+>   "base_url": "http://localhost:20128/v1/chat/completions"
+> }
+> ```
+> Get the API key and model/combo name from your 9Router dashboard at `http://localhost:20128/dashboard`. If you run 9Router on a different host/port (e.g. a VPS), change `base_url` to match.
+
 ---
 
 ## Supported AI providers
@@ -53,6 +64,7 @@ You can use ANY of these by editing `config.json`. The `provider` field is optio
 | **OpenRouter** (100+ models) | `openai` | `anthropic/claude-3.5-sonnet` | `https://openrouter.ai/api/v1/chat/completions` | openrouter.ai |
 | **Together AI** | `openai` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | `https://api.together.xyz/v1/chat/completions` | api.together.ai |
 | **Local Ollama** (free, offline) | `openai` | `llama3.1` | `http://localhost:11434/v1/chat/completions` | (no key needed, install ollama.com) |
+| **9Router** (local gateway, routes to 40+ providers) | `openai` | `kr/claude-sonnet-4.5` | `http://localhost:20128/v1/chat/completions` | 9router.com dashboard (self-hosted) |
 | **Google Gemini** | `gemini` | `gemini-1.5-flash` | (default) | aistudio.google.com |
 
 **Why "openai" covers so many?** Groq, OpenRouter, Together, Ollama, and dozens of others all use the OpenAI-compatible Chat Completions API format. Just change the `base_url` and `model` — the code handles the rest.

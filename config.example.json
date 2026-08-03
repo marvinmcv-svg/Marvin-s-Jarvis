@@ -52,5 +52,14 @@
     "api_key": "AIza...",
     "model": "gemini-1.5-flash",
     "max_tokens": 400
+  },
+
+  "_example_9router_local_gateway": {
+    "_note": "9Router is a SELF-HOSTED local gateway (npm/Docker) that routes to 40+ providers. It runs on YOUR machine at http://localhost:20128/v1 (OpenAI-compatible). Get your API key + model/combo name from its dashboard at http://localhost:20128/dashboard. Jarvis's server.py must run on the SAME machine as 9Router for this to work.",
+    "provider": "openai",
+    "api_key": "your-9router-api-key",
+    "model": "kr/claude-sonnet-4.5",
+    "base_url": "http://localhost:20128/v1/chat/completions",
+    "max_tokens": 400
   }
 }
