@@ -15,11 +15,21 @@
     "max_tokens": 400
   },
 
-  "_example_openrouter_many_models": {
+  "_example_openrouter_free_rotation": {
+    "_note": "OpenRouter with FREE-model rotation. Jarvis tries models in order; on a rate-limit/provider error it moves to the next. Get a key at openrouter.ai. Browse the live free list at https://openrouter.ai/models?max_price=0 — these slugs were verified working; swap/add any ':free' model.",
     "provider": "openai",
     "api_key": "sk-or-v1-...",
-    "model": "anthropic/claude-3.5-sonnet",
     "base_url": "https://openrouter.ai/api/v1/chat/completions",
+    "models": [
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "google/gemma-4-26b-a4b-it:free",
+      "poolside/laguna-s-2.1:free",
+      "inclusionai/ling-3.0-flash:free",
+      "openrouter/free"
+    ],
     "max_tokens": 400
   },
 
