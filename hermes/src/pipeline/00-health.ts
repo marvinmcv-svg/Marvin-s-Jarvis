@@ -1,6 +1,6 @@
 import { db, pingDb } from '../db/client.js';
 import { scraperHealth } from '../db/schema.js';
-import { pingLlm } from '../core/anthropic.js';
+import { pingLlm } from '../core/llm.js';
 import { scrapeGoogleMaps } from './02-scrape.js';
 import { localDate } from '../core/config.js';
 import { hasEmailTransport } from '../core/env.js';

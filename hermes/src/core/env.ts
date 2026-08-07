@@ -12,18 +12,31 @@ const EnvSchema = z
     SUPABASE_URL: z.string().optional(),
     SUPABASE_SERVICE_KEY: z.string().optional(),
 
-    // ── LLM (the one thing that is paid on day one, by design) ─────────────
-    ANTHROPIC_API_KEY: z.string().min(1, 'ANTHROPIC_API_KEY is required'),
+    // ── LLM — provider-agnostic (works with ANY kind of API key) ───────────
+    // Pick a provider explicitly, or let it be inferred (a base URL ⇒ an
+    // OpenAI-compatible gateway; a claude*/gemini* model ⇒ that provider).
+    LLM_PROVIDER: z.enum(['anthropic', 'openai', 'gemini']).optional(),
+    /** Generic key — used for whatever provider is active. Highest precedence. */
+    LLM_API_KEY: z.string().optional(),
     /**
-     * Cheap bulk model: audits, reply classification, memory maintenance.
-     * §12 of the master prompt: "Haiku for cheap bulk". $1/$5 per MTok.
+     * OpenAI-compatible endpoint (or Gemini base). Setting this is how you
+     * point Hermes at 9Router / OpenRouter / Groq / Together / Ollama, e.g.
+     * 9Router: http://localhost:20128/v1/chat/completions
      */
-    ANTHROPIC_BULK_MODEL: z.string().default('claude-haiku-4-5'),
-    /**
-     * Quality model: outreach copy and the reflection write-up.
-     * §12: "Sonnet optional for pitch quality". $3/$15 per MTok.
-     */
-    ANTHROPIC_PITCH_MODEL: z.string().default('claude-sonnet-5'),
+    LLM_BASE_URL: z.string().optional(),
+    /** Cheap bulk model (audits, classification). May be a comma list to rotate. */
+    LLM_BULK_MODEL: z.string().optional(),
+    /** Quality model (outreach copy, reflection). May be a comma list to rotate. */
+    LLM_PITCH_MODEL: z.string().optional(),
+
+    // Provider-specific keys (any one is enough; LLM_API_KEY overrides them).
+    ANTHROPIC_API_KEY: z.string().optional(),
+    OPENAI_API_KEY: z.string().optional(),
+    OPENROUTER_API_KEY: z.string().optional(),
+    GEMINI_API_KEY: z.string().optional(),
+    // Legacy model aliases kept working; LLM_BULK/PITCH_MODEL take precedence.
+    ANTHROPIC_BULK_MODEL: z.string().optional(),
+    ANTHROPIC_PITCH_MODEL: z.string().optional(),
 
     // ── Email delivery ─────────────────────────────────────────────────────
     RESEND_API_KEY: z.string().optional(),

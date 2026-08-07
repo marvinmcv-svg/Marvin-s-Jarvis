@@ -46,7 +46,15 @@ jobs:
       - name: Run the daily pipeline
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # LLM — set whichever your provider needs (see hermes/.env.example).
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_BULK_MODEL: ${{ secrets.LLM_BULK_MODEL }}
+          LLM_PITCH_MODEL: ${{ secrets.LLM_PITCH_MODEL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}

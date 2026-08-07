@@ -35,6 +35,13 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_BULK_MODEL: ${{ secrets.LLM_BULK_MODEL }}
+          LLM_PITCH_MODEL: ${{ secrets.LLM_PITCH_MODEL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           TZ: America/La_Paz
         run: pnpm run reflect

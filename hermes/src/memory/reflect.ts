@@ -6,7 +6,7 @@ import type { RunRecorder } from './run.js';
 import { remember, decay, recallText, pairKey } from './memory.js';
 import { recentPerformance } from './playbook.js';
 import { tune } from './weights.js';
-import { askJson } from '../core/anthropic.js';
+import { askJson } from '../core/llm.js';
 import { personaPreamble } from '../core/persona.js';
 import { log } from '../core/logger.js';
 import { env } from '../core/env.js';

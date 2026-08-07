@@ -88,12 +88,46 @@ pnpm db:push                  # create the tables in Supabase
 | Var | What |
 |---|---|
 | `DATABASE_URL` | Supabase → Database → Connection string (URI). |
-| `ANTHROPIC_API_KEY` | The value engine. Haiku for bulk, Sonnet for pitch copy. |
+| *(an LLM key)* | See **Any API key / provider** below. |
 | `EMAIL_TO` | Where the daily digest lands. |
 | `RESEND_API_KEY` | Email delivery (free tier). *Or* set `SMTP_USER`/`SMTP_PASS` for Gmail. |
 | `IMAP_USER` / `IMAP_PASS` | Optional — enables the reply-check job. |
 
 Everything else has a sensible default — see `.env.example`.
+
+### Any API key / provider
+
+The LLM layer (`src/core/llm.ts` + `src/core/providers.ts`) is provider-agnostic
+— point Hermes at whatever key you have and the rest of the agent doesn't change.
+Three provider shapes cover essentially every host:
+
+| Provider | `LLM_PROVIDER` | Config | Covers |
+|---|---|---|---|
+| **Anthropic** | `anthropic` (default) | `ANTHROPIC_API_KEY` | Claude native |
+| **OpenAI-compatible** | `openai` | `LLM_API_KEY` + `LLM_BASE_URL` | **9Router**, OpenRouter, Groq, Together, Ollama, OpenAI |
+| **Gemini** | `gemini` | `GEMINI_API_KEY` | Google |
+
+The provider is **inferred** when you don't set `LLM_PROVIDER`: a `LLM_BASE_URL`
+means an OpenAI-compatible gateway; a `claude*`/`gemini*` model name picks that
+provider; otherwise Anthropic. Structured JSON is guaranteed on every path
+(forced tool/function calling, with a raw-JSON fallback for models that don't do
+tools). `LLM_BULK_MODEL` / `LLM_PITCH_MODEL` may be **comma lists** — Hermes
+rotates to the next model on a transient failure (handy for free tiers).
+
+**Example — 9Router** (self-hosted; run Hermes on the same host, or point
+`LLM_BASE_URL` at yours):
+
+```bash
+LLM_PROVIDER=openai
+LLM_API_KEY=sk-your-9router-key
+LLM_BASE_URL=http://localhost:20128/v1/chat/completions
+LLM_BULK_MODEL=kr/claude-haiku
+LLM_PITCH_MODEL=kr/claude-sonnet-4.5
+```
+
+See `.env.example` for ready-to-copy blocks for every provider. This same module
+is the reusable pattern for future agents — drop it in and they inherit any-key
+support.
 
 ### Run it
 

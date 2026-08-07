@@ -1,6 +1,6 @@
 import type { PitchDraft, ScoredLead } from './types.js';
 import type { Scored } from './06-score.js';
-import { tryAskJson } from '../core/anthropic.js';
+import { tryAskJson } from '../core/llm.js';
 import { personaPreamble, memoryBlock } from '../core/persona.js';
 import { recallText } from '../memory/memory.js';
 import { pitchGuidance, preferredAngles, isPitchAngle } from '../memory/playbook.js';

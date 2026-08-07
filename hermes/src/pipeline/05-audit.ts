@@ -1,6 +1,6 @@
 import type { LeadAudit } from '../db/schema.js';
 import type { WorkingLead } from './types.js';
-import { tryAskJson } from '../core/anthropic.js';
+import { tryAskJson } from '../core/llm.js';
 import { personaPreamble, memoryBlock } from '../core/persona.js';
 import { recallText } from '../memory/memory.js';
 import { log } from '../core/logger.js';
