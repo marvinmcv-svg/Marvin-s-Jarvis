@@ -1,0 +1,53 @@
+name: Hermes — reply check
+
+# Lighter job (master prompt §10): watch the inbox for replies, match them to
+# leads, classify sentiment, and stop chasing anyone who bit. Runs hourly during
+# waking hours in Bolivia (11:00–02:00 UTC ≈ 07:00–22:00 BOT).
+#
+# // PAID-UPGRADE: on Railway this becomes an always-on service instead of an
+# // hourly cron, so replies are seen in near-real-time.
+
+on:
+  schedule:
+    - cron: '0 11-23 * * *'
+    - cron: '0 0-2 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: hermes-reply-check
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: hermes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: hermes/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Run reply check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_BULK_MODEL: ${{ secrets.LLM_BULK_MODEL }}
+          LLM_PITCH_MODEL: ${{ secrets.LLM_PITCH_MODEL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASS: ${{ secrets.IMAP_PASS }}
+          TZ: America/La_Paz
+        run: pnpm run reply-check

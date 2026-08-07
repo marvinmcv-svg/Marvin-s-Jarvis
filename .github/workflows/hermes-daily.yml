@@ -1,0 +1,73 @@
+name: Hermes — daily lead hunt
+
+# Free path (master prompt §11): GitHub Actions scheduled workflow.
+# 14:00 UTC = 10:00 America/La_Paz (BOT, UTC-4, no DST), Mon–Fri.
+# Note: GH Actions cron is best-effort and may fire a few minutes late —
+# fine for a morning digest.
+#
+# // PAID-UPGRADE: Railway cron (~$5/mo, already connected) for deterministic
+# // timing and an always-on reply-tracking job. Recommended once Hermes proves
+# // itself. Secrets move from GitHub Actions secrets to Railway variables.
+
+on:
+  schedule:
+    - cron: '0 14 * * 1-5'
+  workflow_dispatch: {} # let Marvin trigger a run by hand from the Actions tab
+
+concurrency:
+  group: hermes-daily
+  cancel-in-progress: false
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: hermes
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: hermes/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run the daily pipeline
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # LLM — set whichever your provider needs (see hermes/.env.example).
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_BULK_MODEL: ${{ secrets.LLM_BULK_MODEL }}
+          LLM_PITCH_MODEL: ${{ secrets.LLM_PITCH_MODEL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          TZ: America/La_Paz
+        run: pnpm run daily
+
+      - name: Upload the spreadsheet as an artifact (backup)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hermes-leads
+          path: hermes/out/*.xlsx
+          if-no-files-found: ignore
+          retention-days: 14
